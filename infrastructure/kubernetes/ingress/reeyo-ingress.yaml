@@ -1,0 +1,47 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: reeyo-ingress
+  namespace: reeyo
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  tls:
+  - hosts:
+    - api.reeyo.cm
+    secretName: reeyo-tls
+  rules:
+  - host: api.reeyo.cm
+    http:
+      paths:
+      - path: /api/v1/user
+        pathType: Prefix
+        backend:
+          service:
+            name: user-api-service
+            port:
+              number: 80
+      - path: /api/v1/vendor
+        pathType: Prefix
+        backend:
+          service:
+            name: vendor-api-service
+            port:
+              number: 80
+      - path: /api/v1/rider
+        pathType: Prefix
+        backend:
+          service:
+            name: rider-api-service
+            port:
+              number: 80
+      - path: /api/v1/admin
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-api-service
+            port:
+              number: 80

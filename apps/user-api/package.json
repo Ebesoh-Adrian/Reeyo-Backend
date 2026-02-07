@@ -1,0 +1,48 @@
+{
+  "name": "@reeyo/user-api",
+  "version": "1.0.0",
+  "description": "Reeyo User API - Customer application",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "jest",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "keywords": [
+    "reeyo",
+    "user",
+    "customer",
+    "delivery",
+    "api"
+  ],
+  "author": "Reeyo Team",
+  "license": "MIT",
+  "dependencies": {
+    "@reeyo/shared-utils": "workspace:*",
+    "@reeyo/core-db": "workspace:*",
+    "@reeyo/wallet-engine": "workspace:*",
+    "@reeyo/notifications": "workspace:*",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "compression": "^1.7.4",
+    "dotenv": "^16.3.1",
+    "socket.io-client": "^4.7.2",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/compression": "^1.7.5",
+    "@types/node": "^20.10.5",
+    "@types/uuid": "^9.0.7",
+    "typescript": "^5.3.3",
+    "ts-node-dev": "^2.0.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.1.1"
+  }
+}

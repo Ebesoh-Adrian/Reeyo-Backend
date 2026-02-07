@@ -1,0 +1,97 @@
+{
+  "name": "@reeyo/rider-api",
+  "version": "1.0.0",
+  "description": "Rider API for Reeyo delivery platform",
+  "private": false,
+  "license": "PROPRIETARY",
+  "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/server.js",
+      "require": "./dist/server.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.17.0",
+    "npm": ">=9.6.0"
+  },
+  "scripts": {
+    "dev": "nodemon --exec tsx src/server.ts --env-file=.env.local",
+    "dev:watch": "nodemon --exec tsx src/server.ts --ignore src --env-file=.env.local",
+    "build": "tsc --pretty",
+    "build:clean": "rimraf dist && npm run build",
+    "start": "node dist/server.js",
+    "start:prod": "NODE_ENV=production node dist/server.js",
+    "preview": "npm run build && npm run start",
+    "lint": "eslint src --ext .ts --max-warnings 0",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "format:check": "prettier --check src/**/*.ts",
+    "type-check": "tsc --noEmit",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
+    "test:e2e": "jest --config jest.e2e.config.js",
+    "clean": "rimraf dist coverage node_modules",
+    "verify": "npm run lint && npm run type-check && npm run test"
+  },
+  "dependencies": {
+    "@reeyo/core-db": "workspace:*",
+    "@reeyo/wallet-engine": "workspace:*",
+    "@reeyo/notifications": "workspace:*",
+    "@reeyo/shared-utils": "workspace:*",
+    "@reeyo/shared-types": "workspace:*",
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
+    "express-validator": "^7.0.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.1.2",
+    "socket.io": "^4.7.2",
+    "redis": "^4.6.12",
+    "aws-sdk": "^2.1576.0",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0",
+    "joi": "^17.11.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.6",
+    "@types/express": "^4.17.21",
+    "@types/bcryptjs": "^2.4.6",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.7.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.17.0",
+    "@typescript-eslint/parser": "^6.17.0",
+    "prettier": "^3.1.1",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.11",
+    "ts-jest": "^29.1.1",
+    "supertest": "^6.3.3",
+    "@types/supertest": "^6.0.2",
+    "rimraf": "^5.0.5",
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "reeyo",
+    "rider",
+    "delivery",
+    "logistics",
+    "api"
+  ],
+  "author": "CodersHub Innovations",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coderswithoutborders/reeyo-rider-api"
+  },
+  "bugs": {
+    "url": "https://github.com/coderswithoutborders/reeyo-rider-api/issues"
+  }
+}
+

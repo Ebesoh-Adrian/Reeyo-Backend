@@ -1,0 +1,32 @@
+{
+  "name": "@reeyo/admin-api",
+  "version": "1.0.0",
+  "description": "Reeyo Admin API - Complete platform management",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@reeyo/shared-utils": "workspace:*",
+    "@reeyo/core-db": "workspace:*",
+    "@reeyo/wallet-engine": "workspace:*",
+    "@reeyo/notifications": "workspace:*",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "compression": "^1.7.4",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.1",
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.5",
+    "typescript": "^5.3.3",
+    "ts-node-dev": "^2.0.0"
+  }
+}

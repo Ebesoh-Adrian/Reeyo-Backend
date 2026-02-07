@@ -1,0 +1,736 @@
+{
+  "info": {
+    "name": "Reeyo Rider API",
+    "description": "Complete API collection for Reeyo Rider application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3003/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rider_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "order_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Rider",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('token', jsonData.data.token);",
+                  "    pm.environment.set('rider_id', jsonData.data.rider.riderId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Rider\",\n  \"phone\": \"+237670000001\",\n  \"email\": \"rider@reeyo.cm\",\n  \"password\": \"Rider123!@#\",\n  \"vehicleType\": \"MOTORCYCLE\",\n  \"vehicleDetails\": {\n    \"plateNumber\": \"LT-1234-ABC\",\n    \"brand\": \"Honda\",\n    \"model\": \"CBR 150\",\n    \"color\": \"Red\"\n  },\n  \"documents\": {\n    \"idCardUrl\": \"https://s3.amazonaws.com/reeyo/documents/id-123.jpg\",\n    \"drivingLicenseUrl\": \"https://s3.amazonaws.com/reeyo/documents/license-123.jpg\",\n    \"vehicleRegistrationUrl\": \"https://s3.amazonaws.com/reeyo/documents/vehicle-123.jpg\"\n  },\n  \"bankDetails\": {\n    \"accountName\": \"John Rider\",\n    \"accountNumber\": \"1234567890\",\n    \"bankName\": \"Afriland First Bank\"\n  },\n  \"emergencyContact\": {\n    \"name\": \"Jane Rider\",\n    \"phone\": \"+237670000002\",\n    \"relationship\": \"Sister\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('token', jsonData.data.token);",
+                  "    pm.environment.set('rider_id', jsonData.data.rider.riderId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+237670000001\",\n  \"password\": \"Rider123!@#\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John Updated\",\n  \"email\": \"john.updated@reeyo.cm\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Verify Phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/verify-phone",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-phone"]
+            }
+          }
+        },
+        {
+          "name": "Resend OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/resend-otp",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "resend-otp"]
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"Rider123!@#\",\n  \"newPassword\": \"NewRider123!@#\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "change-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Availability",
+      "item": [
+        {
+          "name": "Toggle Online Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isOnline\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/availability/status",
+              "host": ["{{base_url}}"],
+              "path": ["availability", "status"]
+            }
+          }
+        },
+        {
+          "name": "Update Location",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 4.0511,\n  \"longitude\": 9.7679\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/availability/location",
+              "host": ["{{base_url}}"],
+              "path": ["availability", "location"]
+            }
+          }
+        },
+        {
+          "name": "Get Availability Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/availability/status",
+              "host": ["{{base_url}}"],
+              "path": ["availability", "status"]
+            }
+          }
+        },
+        {
+          "name": "Get Daily Activity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/availability/activity",
+              "host": ["{{base_url}}"],
+              "path": ["availability", "activity"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Get Available Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/available?latitude=4.0511&longitude=9.7679",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "available"],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "4.0511"
+                },
+                {
+                  "key": "longitude",
+                  "value": "9.7679"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/accept",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "accept"]
+            }
+          }
+        },
+        {
+          "name": "Arrive at Pickup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/arrive-pickup",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "arrive-pickup"]
+            }
+          }
+        },
+        {
+          "name": "Confirm Pickup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/confirm-pickup",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "confirm-pickup"]
+            }
+          }
+        },
+        {
+          "name": "Arrive at Delivery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/arrive-delivery",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "arrive-delivery"]
+            }
+          }
+        },
+        {
+          "name": "Complete Delivery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verificationCode\": \"1234\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/complete",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Get Active Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/active",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "active"]
+            }
+          }
+        },
+        {
+          "name": "Get Order History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/history?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "history"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Order Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Report Issue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"issueType\": \"CUSTOMER_NOT_AVAILABLE\",\n  \"description\": \"Customer not responding to calls after multiple attempts\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/report-issue",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "report-issue"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Earnings",
+      "item": [
+        {
+          "name": "Get Earnings Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/earnings/summary",
+              "host": ["{{base_url}}"],
+              "path": ["earnings", "summary"]
+            }
+          }
+        },
+        {
+          "name": "Get Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/earnings/transactions?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["earnings", "transactions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Daily Earnings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/earnings/daily?days=30",
+              "host": ["{{base_url}}"],
+              "path": ["earnings", "daily"],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Weekly Earnings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/earnings/weekly?weeks=12",
+              "host": ["{{base_url}}"],
+              "path": ["earnings", "weekly"],
+              "query": [
+                {
+                  "key": "weeks",
+                  "value": "12"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Monthly Earnings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/earnings/monthly?months=12",
+              "host": ["{{base_url}}"],
+              "path": ["earnings", "monthly"],
+              "query": [
+                {
+                  "key": "months",
+                  "value": "12"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payouts",
+      "item": [
+        {
+          "name": "Request Payout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payouts/request",
+              "host": ["{{base_url}}"],
+              "path": ["payouts", "request"]
+            }
+          }
+        },
+        {
+          "name": "Get Payout History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payouts?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["payouts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Available Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payouts/balance",
+              "host": ["{{base_url}}"],
+              "path": ["payouts", "balance"]
+            }
+          }
+        },
+        {
+          "name": "Get Payout Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payouts/{{payout_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["payouts", "{{payout_id}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

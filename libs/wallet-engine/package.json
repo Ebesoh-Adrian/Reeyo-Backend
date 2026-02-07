@@ -1,0 +1,25 @@
+{
+  "name": "@reeyo/wallet-engine",
+  "version": "1.0.0",
+  "description": "Financial transaction engine with commission calculations and ACID compliance",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "uuid": "^9.0.1",
+    "decimal.js": "^10.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3",
+    "jest": "^30.2.0",
+    "@types/jest": "^29.5.11"
+  }
+}

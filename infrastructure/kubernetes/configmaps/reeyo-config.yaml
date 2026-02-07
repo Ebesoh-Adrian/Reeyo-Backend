@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: reeyo-config
+  namespace: reeyo
+data:
+  redis-host: "reeyo-redis.xxxxx.ng.0001.use1.cache.amazonaws.com"
+  aws-region: "us-east-1"
+  dynamodb-table-prefix: "reeyo-prod"
+  log-level: "info"
+  rate-limit-window: "900000"
+  rate-limit-max: "100"
