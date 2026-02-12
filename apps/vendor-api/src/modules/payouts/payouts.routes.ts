@@ -5,24 +5,25 @@ import { validate } from '../../middleware/validation.middleware';
 import { authenticateVendor, requireActiveVendor } from '../../middleware/auth.middleware';
 import { PayoutsController } from './payouts.controller';
 
-const payoutsRouter = Router();
+const router = Router();
 const payoutsController = new PayoutsController();
 
-payoutsRouter.use(authenticateVendor);
-payoutsRouter.use(requireActiveVendor);
+// All routes require authentication
+router.use(authenticateVendor);
+router.use(requireActiveVendor);
 
-payoutsRouter.post(
+router.post(
   '/request',
   validate([
     body('amount').isFloat({ min: 50000 }).withMessage('Minimum payout is 50,000 XAF'),
-    body('bankDetails.accountName').trim().notEmpty(),
-    body('bankDetails.accountNumber').trim().notEmpty(),
-    body('bankDetails.bankName').trim().notEmpty(),
+    body('bankDetails.accountName').trim().notEmpty().withMessage('Account name is required'),
+    body('bankDetails.accountNumber').trim().notEmpty().withMessage('Account number is required'),
+    body('bankDetails.bankName').trim().notEmpty().withMessage('Bank name is required'),
   ]),
   payoutsController.requestPayout
 );
 
-payoutsRouter.get('/', payoutsController.getPayouts);
-payoutsRouter.get('/:payoutId', payoutsController.getPayout);
+router.get('/', payoutsController.getPayouts);
+router.get('/:payoutId', payoutsController.getPayout);
 
-export { payoutsRouter };
+export default router;  // ✅ Changed to default export

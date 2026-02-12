@@ -25,7 +25,7 @@ import { notFoundHandler } from './middleware/not-found.middleware';
 import { requestLogger } from './middleware/request-logger.middleware';
 
 // Import utilities
-import { logger } from '../../libs/shared-utils/logger';
+import { logger } from '../../../libs/shared-utils/logger';
 import { validateEnv } from './config/validate-env';
 
 // Validate environment variables on startup

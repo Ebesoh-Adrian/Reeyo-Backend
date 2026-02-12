@@ -1,232 +1,180 @@
 // libs/core-db/repositories/vendor.repository.ts
 
-import { BaseRepository } from './base.repository';
-import { VendorModel } from '../models/vendor.model';
-import { VendorStatus, ServiceType } from '../../constants';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  GetCommand,
+  UpdateCommand,
+  QueryCommand,
+  DeleteCommand,
+} from '@aws-sdk/lib-dynamodb';
+import { AppError } from '../..//errors/app-error';
 
-export class VendorRepository extends BaseRepository<VendorModel> {
+export interface Vendor {
+  vendorId: string;
+  businessName: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  password: string;
+  serviceType: 'FOOD' | 'MART';
+  location: {
+    address: string;
+    city: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    };
+  };
+  bankDetails: {
+    accountName: string;
+    accountNumber: string;
+    bankName: string;
+  };
+  isEmailVerified: boolean;
+  isPhoneVerified: boolean;
+  status: 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
+  otp?: string;
+  otpExpiry?: string;
+  resetToken?: string;
+  resetTokenExpiry?: string;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export class VendorRepository {
+  private docClient: DynamoDBDocumentClient;
+  private tableName: string;
+
   constructor() {
-    super('Vendor');
-  }
-
-  /**
-   * Create a new vendor
-   */
-  async createVendor(vendor: VendorModel): Promise<VendorModel> {
-    return this.create(vendor);
-  }
-
-  /**
-   * Find vendor by ID
-   */
-  async findById(vendorId: string): Promise<VendorModel | null> {
-    return this.findByKey({
-      PK: `VENDOR#${vendorId}`,
-      SK: 'PROFILE',
+    const client = new DynamoDBClient({
+      region: process.env.AWS_REGION || 'us-east-1',
     });
+    this.docClient = DynamoDBDocumentClient.from(client);
+    this.tableName = `${process.env.DYNAMODB_TABLE_PREFIX || 'reeyo'}-vendors`;
   }
 
-  /**
-   * Find vendor by email
-   */
-  async findByEmail(email: string): Promise<VendorModel | null> {
-    const result = await this.db.query<VendorModel>(
-      'GSI1PK = :gsi1pk',
-      { ':gsi1pk': `VENDOR#EMAIL#${email.toLowerCase()}` },
-      { indexName: 'GSI1' }
-    );
-
-    return result.items[0] || null;
-  }
-
-  /**
-   * Update vendor profile
-   */
-  async updateProfile(
-    vendorId: string,
-    updates: Partial<VendorModel>
-  ): Promise<VendorModel> {
-    return this.update(
-      {
-        PK: `VENDOR#${vendorId}`,
-        SK: 'PROFILE',
-      },
-      updates
-    );
-  }
-
-  /**
-   * Update vendor status (PENDING, APPROVED, REJECTED, SUSPENDED)
-   */
-  async updateStatus(
-    vendorId: string,
-    status: VendorStatus
-  ): Promise<VendorModel> {
-    const updates: any = {
-      status,
-      GSI1PK: `VENDOR#${status}`,
-    };
-
-    if (status === VendorStatus.APPROVED) {
-      updates.approvedAt = new Date().toISOString();
-    } else if (status === VendorStatus.REJECTED) {
-      updates.rejectedAt = new Date().toISOString();
-    } else if (status === VendorStatus.SUSPENDED) {
-      updates.suspendedAt = new Date().toISOString();
-    }
-
-    return this.update(
-      {
-        PK: `VENDOR#${vendorId}`,
-        SK: 'PROFILE',
-      },
-      updates
-    );
-  }
-
-  /**
-   * Toggle online/offline status
-   */
-  async toggleOnlineStatus(
-    vendorId: string,
-    isOnline: boolean
-  ): Promise<VendorModel> {
-    return this.update(
-      {
-        PK: `VENDOR#${vendorId}`,
-        SK: 'PROFILE',
-      },
-      { isOnline }
-    );
-  }
-
-  /**
-   * Get vendors by status with pagination
-   */
-  async findByStatus(
-    status: VendorStatus,
-    options?: {
-      limit?: number;
-      lastKey?: Record<string, any>;
-    }
-  ): Promise<{
-    vendors: VendorModel[];
-    lastKey?: Record<string, any>;
-  }> {
-    const result = await this.queryWithPagination(
-      'GSI1PK = :gsi1pk',
-      { ':gsi1pk': `VENDOR#${status}` },
-      {
-        indexName: 'GSI1',
-        limit: options?.limit,
-        lastKey: options?.lastKey,
-      }
-    );
-
-    return {
-      vendors: result.items,
-      lastKey: result.lastKey,
-    };
-  }
-
-  /**
-   * Find active vendors by service type near location
-   * Uses Haversine formula to calculate distance
-   */
-  async findNearby(
-    serviceType: ServiceType,
-    lat: number,
-    lng: number,
-    radiusKm: number = 10
-  ): Promise<VendorModel[]> {
-    // Get all active vendors of this service type
-    const result = await this.db.query<VendorModel>(
-      'GSI1PK = :gsi1pk',
-      { ':gsi1pk': `VENDOR#${VendorStatus.ACTIVE}` },
-      {
-        indexName: 'GSI1',
-        filterExpression: 'serviceType = :serviceType AND isOnline = :isOnline',
-      }
-    );
-
-    // Filter by distance using Haversine formula
-    return result.items.filter((vendor) => {
-      const distance = this.calculateDistance(
-        lat,
-        lng,
-        vendor.location.coordinates.lat,
-        vendor.location.coordinates.lng
+  async create(vendor: Vendor): Promise<Vendor> {
+    try {
+      await this.docClient.send(
+        new PutCommand({
+          TableName: this.tableName,
+          Item: vendor,
+          ConditionExpression: 'attribute_not_exists(vendorId)',
+        })
       );
-      return distance <= radiusKm;
-    });
-  }
-
-  /**
-   * Calculate distance between two coordinates (Haversine formula)
-   * Returns distance in kilometers
-   */
-  private calculateDistance(
-    lat1: number,
-    lng1: number,
-    lat2: number,
-    lng2: number
-  ): number {
-    const R = 6371; // Earth's radius in km
-    const dLat = this.toRad(lat2 - lat1);
-    const dLng = this.toRad(lng2 - lng1);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRad(lat1)) *
-        Math.cos(this.toRad(lat2)) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  private toRad(degrees: number): number {
-    return degrees * (Math.PI / 180);
-  }
-
-  /**
-   * Update vendor rating after a new review
-   */
-  async updateRating(
-    vendorId: string,
-    newRating: number,
-    totalRatings: number
-  ): Promise<void> {
-    await this.update(
-      {
-        PK: `VENDOR#${vendorId}`,
-        SK: 'PROFILE',
-      },
-      {
-        rating: newRating,
-        totalRatings,
+      return vendor;
+    } catch (error: any) {
+      if (error.name === 'ConditionalCheckFailedException') {
+        throw new AppError('Vendor already exists', 409, 'VENDOR_2001');
       }
-    );
+      throw error;
+    }
   }
 
-  /**
-   * Increment total order count for vendor
-   */
-  async incrementOrderCount(vendorId: string): Promise<void> {
-    const vendor = await this.findById(vendorId);
-    if (!vendor) {
-      throw new Error('Vendor not found');
+  async findById(vendorId: string): Promise<Vendor | null> {
+    const result = await this.docClient.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: { vendorId },
+      })
+    );
+
+    return (result.Item as Vendor) || null;
+  }
+
+  async findByEmail(email: string): Promise<Vendor | null> {
+    const result = await this.docClient.send(
+      new QueryCommand({
+        TableName: this.tableName,
+        IndexName: 'EmailIndex',
+        KeyConditionExpression: 'email = :email',
+        ExpressionAttributeValues: {
+          ':email': email,
+        },
+        Limit: 1,
+      })
+    );
+
+    return result.Items?.[0] as Vendor || null;
+  }
+
+  async findByPhone(phone: string): Promise<Vendor | null> {
+    const result = await this.docClient.send(
+      new QueryCommand({
+        TableName: this.tableName,
+        IndexName: 'PhoneIndex',
+        KeyConditionExpression: 'phone = :phone',
+        ExpressionAttributeValues: {
+          ':phone': phone,
+        },
+        Limit: 1,
+      })
+    );
+
+    return result.Items?.[0] as Vendor || null;
+  }
+
+  async findByResetToken(resetToken: string): Promise<Vendor | null> {
+    const result = await this.docClient.send(
+      new QueryCommand({
+        TableName: this.tableName,
+        IndexName: 'ResetTokenIndex',
+        KeyConditionExpression: 'resetToken = :resetToken',
+        ExpressionAttributeValues: {
+          ':resetToken': resetToken,
+        },
+        Limit: 1,
+      })
+    );
+
+    return result.Items?.[0] as Vendor || null;
+  }
+
+  async update(vendorId: string, updates: Partial<Vendor>): Promise<Vendor> {
+    const updateExpressions: string[] = [];
+    const expressionAttributeNames: Record<string, string> = {};
+    const expressionAttributeValues: Record<string, any> = {};
+
+    Object.entries(updates).forEach(([key, value], index) => {
+      const attrName = `#attr${index}`;
+      const attrValue = `:val${index}`;
+      updateExpressions.push(`${attrName} = ${attrValue}`);
+      expressionAttributeNames[attrName] = key;
+      expressionAttributeValues[attrValue] = value;
+    });
+
+    // Always update updatedAt
+    updateExpressions.push('#updatedAt = :updatedAt');
+    expressionAttributeNames['#updatedAt'] = 'updatedAt';
+    expressionAttributeValues[':updatedAt'] = new Date().toISOString();
+
+    const result = await this.docClient.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: { vendorId },
+        UpdateExpression: `SET ${updateExpressions.join(', ')}`,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
+        ReturnValues: 'ALL_NEW',
+      })
+    );
+
+    if (!result.Attributes) {
+      throw new AppError('Vendor not found', 404, 'VENDOR_2002');
     }
 
-    await this.update(
-      {
-        PK: `VENDOR#${vendorId}`,
-        SK: 'PROFILE',
-      },
-      {
-        totalOrders: (vendor.totalOrders || 0) + 1,
-      }
+    return result.Attributes as Vendor;
+  }
+
+  async delete(vendorId: string): Promise<void> {
+    await this.docClient.send(
+      new DeleteCommand({
+        TableName: this.tableName,
+        Key: { vendorId },
+      })
     );
   }
 }

@@ -1,11 +1,11 @@
 // apps/vendor-api/src/modules/inventory/inventory.service.ts
 
 import { v4 as uuidv4 } from 'uuid';
-import { VendorRepository } from '../../../../../libs/core-db/repositories/vendor.repository';
-import { dynamoDB } from '../../../../../libs/core-db/client';
-import { AppError } from '../../middleware/error.middleware';
+import { AppError } from '../../../../../libs/shared-utils/errors/app-error';
+import { logger } from '../../../../../libs/shared-utils/logger';
+import { MenuItemRepository, MenuItem } from '../../../../../libs/shared-utils/core-db/repositories/menu-item.repository';
 
-interface MenuItemData {
+interface AddMenuItemDTO {
   name: string;
   description: string;
   category: string;
@@ -16,208 +16,144 @@ interface MenuItemData {
   tags?: string[];
 }
 
+interface MenuItemFilters {
+  category?: string;
+  available?: boolean;
+  search?: string;
+}
+
 export class InventoryService {
-  private vendorRepo: VendorRepository;
-  private readonly MAX_MENU_ITEMS = parseInt(process.env.MAX_MENU_ITEMS || '500', 10);
+  private menuItemRepo: MenuItemRepository;
 
   constructor() {
-    this.vendorRepo = new VendorRepository();
+    this.menuItemRepo = new MenuItemRepository();
   }
 
-  /**
-   * Add menu item
-   */
-  async addMenuItem(vendorId: string, itemData: MenuItemData) {
-    // Verify vendor exists and is active
-    const vendor = await this.vendorRepo.findById(vendorId);
-    if (!vendor) {
-      throw new AppError('Vendor not found', 404, 'VENDOR_3000');
-    }
-
-    if (vendor.status !== 'ACTIVE' && vendor.status !== 'APPROVED') {
-      throw new AppError(
-        'Vendor account is not active',
-        403,
-        'VENDOR_3002'
-      );
-    }
-
-    // Check menu item limit
-    const existingItems = await this.getMenuItems(vendorId, {});
-    if (existingItems.length >= this.MAX_MENU_ITEMS) {
-      throw new AppError(
-        `Maximum menu items limit (${this.MAX_MENU_ITEMS}) reached`,
-        400,
-        'INVENTORY_6003'
-      );
-    }
-
-    // Create menu item
+  async addMenuItem(vendorId: string, data: AddMenuItemDTO): Promise<MenuItem> {
     const itemId = `item_${uuidv4()}`;
-    const menuItem = {
-      PK: `VENDOR#${vendorId}`,
-      SK: `ITEM#${itemId}`,
-      GSI1PK: `VENDOR#${vendorId}#ITEMS`,
-      GSI1SK: `ITEM#${itemData.category}#${itemId}`,
+
+    const menuItem: MenuItem = {
       itemId,
       vendorId,
-      name: itemData.name,
-      description: itemData.description,
-      category: itemData.category,
-      price: itemData.price,
-      preparationTime: itemData.preparationTime,
-      available: itemData.available !== undefined ? itemData.available : true,
-      images: itemData.images || [],
-      tags: itemData.tags || [],
-      popularity: 0,
-      totalOrders: 0,
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      price: data.price,
+      preparationTime: data.preparationTime,
+      available: data.available !== undefined ? data.available : true,
+      images: data.images || [],
+      tags: data.tags || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    await dynamoDB.put(menuItem);
+    await this.menuItemRepo.create(menuItem);
+
+    logger.info('Menu item added', { vendorId, itemId, name: data.name });
 
     return menuItem;
   }
 
-  /**
-   * Get all menu items for vendor
-   */
-  async getMenuItems(
-    vendorId: string,
-    filters: {
-      category?: string;
-      available?: boolean;
-      search?: string;
-    }
-  ) {
-    const result = await dynamoDB.query(
-      'GSI1PK = :gsi1pk',
-      { ':gsi1pk': `VENDOR#${vendorId}#ITEMS` },
-      { indexName: 'GSI1' }
-    );
-
-    let items = result.items;
+  async getMenuItems(vendorId: string, filters: MenuItemFilters): Promise<MenuItem[]> {
+    let items = await this.menuItemRepo.findByVendor(vendorId);
 
     // Apply filters
     if (filters.category) {
-      items = items.filter((item: any) => 
-        item.category.toLowerCase() === filters.category?.toLowerCase()
-      );
+      items = items.filter((item) => item.category === filters.category);
     }
 
     if (filters.available !== undefined) {
-      items = items.filter((item: any) => item.available === filters.available);
+      items = items.filter((item) => item.available === filters.available);
     }
 
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      items = items.filter((item: any) => 
-        item.name.toLowerCase().includes(searchLower) ||
-        item.description.toLowerCase().includes(searchLower) ||
-        item.tags?.some((tag: string) => tag.toLowerCase().includes(searchLower))
+      items = items.filter(
+        (item) =>
+          item.name.toLowerCase().includes(searchLower) ||
+          item.description.toLowerCase().includes(searchLower) ||
+          item.tags.some((tag) => tag.toLowerCase().includes(searchLower))
       );
     }
+
+    // Sort by name
+    items.sort((a, b) => a.name.localeCompare(b.name));
 
     return items;
   }
 
-  /**
-   * Get single menu item
-   */
-  async getMenuItem(vendorId: string, itemId: string) {
-    const item = await dynamoDB.get({
-      PK: `VENDOR#${vendorId}`,
-      SK: `ITEM#${itemId}`,
-    });
+  async getMenuItem(vendorId: string, itemId: string): Promise<MenuItem> {
+    const item = await this.menuItemRepo.findById(itemId);
 
     if (!item) {
-      throw new AppError('Menu item not found', 404, 'INVENTORY_6000');
+      throw new AppError('Menu item not found', 404, 'INVENTORY_3001');
+    }
+
+    if (item.vendorId !== vendorId) {
+      throw new AppError('Access denied', 403, 'INVENTORY_3002');
     }
 
     return item;
   }
 
-  /**
-   * Update menu item
-   */
-  async updateMenuItem(vendorId: string, itemId: string, updates: Partial<MenuItemData>) {
-    // Verify item exists
-    const existingItem = await this.getMenuItem(vendorId, itemId);
+  async updateMenuItem(
+    vendorId: string,
+    itemId: string,
+    updates: Partial<AddMenuItemDTO>
+  ): Promise<MenuItem> {
+    const item = await this.getMenuItem(vendorId, itemId);
 
-    const updatedItem = await dynamoDB.update(
-      {
-        PK: `VENDOR#${vendorId}`,
-        SK: `ITEM#${itemId}`,
-      },
-      {
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      }
-    );
+    const updatedItem = await this.menuItemRepo.update(itemId, updates);
+
+    logger.info('Menu item updated', { vendorId, itemId });
 
     return updatedItem;
   }
 
-  /**
-   * Delete menu item
-   */
-  async deleteMenuItem(vendorId: string, itemId: string) {
-    // Verify item exists
-    await this.getMenuItem(vendorId, itemId);
+  async deleteMenuItem(vendorId: string, itemId: string): Promise<void> {
+    const item = await this.getMenuItem(vendorId, itemId);
 
-    await dynamoDB.delete({
-      PK: `VENDOR#${vendorId}`,
-      SK: `ITEM#${itemId}`,
-    });
+    await this.menuItemRepo.delete(itemId);
+
+    logger.info('Menu item deleted', { vendorId, itemId });
   }
 
-  /**
-   * Toggle item availability
-   */
-  async toggleAvailability(vendorId: string, itemId: string, available: boolean) {
-    const item = await dynamoDB.update(
-      {
-        PK: `VENDOR#${vendorId}`,
-        SK: `ITEM#${itemId}`,
-      },
-      {
-        available,
-        updatedAt: new Date().toISOString(),
+  async toggleAvailability(
+    vendorId: string,
+    itemId: string,
+    available: boolean
+  ): Promise<MenuItem> {
+    const item = await this.getMenuItem(vendorId, itemId);
+
+    const updatedItem = await this.menuItemRepo.update(itemId, { available });
+
+    logger.info('Menu item availability toggled', { vendorId, itemId, available });
+
+    return updatedItem;
+  }
+
+  async getCategories(vendorId: string): Promise<string[]> {
+    const items = await this.menuItemRepo.findByVendor(vendorId);
+
+    const categories = [...new Set(items.map((item) => item.category))];
+
+    return categories.sort();
+  }
+
+  async bulkUpdateAvailability(
+    vendorId: string,
+    itemIds: string[],
+    available: boolean
+  ): Promise<void> {
+    const updatePromises = itemIds.map(async (itemId) => {
+      const item = await this.menuItemRepo.findById(itemId);
+      if (item && item.vendorId === vendorId) {
+        await this.menuItemRepo.update(itemId, { available });
       }
-    );
-
-    return item;
-  }
-
-  /**
-   * Get all unique categories for vendor
-   */
-  async getCategories(vendorId: string) {
-    const items = await this.getMenuItems(vendorId, {});
-    
-    const categoriesSet = new Set<string>();
-    const categoriesWithCount: { [key: string]: number } = {};
-
-    items.forEach((item: any) => {
-      categoriesSet.add(item.category);
-      categoriesWithCount[item.category] = (categoriesWithCount[item.category] || 0) + 1;
     });
-
-    return Array.from(categoriesSet).map(category => ({
-      name: category,
-      itemCount: categoriesWithCount[category],
-    }));
-  }
-
-  /**
-   * Bulk update availability
-   */
-  async bulkUpdateAvailability(vendorId: string, itemIds: string[], available: boolean) {
-    const updatePromises = itemIds.map(itemId =>
-      this.toggleAvailability(vendorId, itemId, available)
-    );
 
     await Promise.all(updatePromises);
+
+    logger.info('Bulk availability update', { vendorId, count: itemIds.length, available });
   }
 }

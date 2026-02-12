@@ -1,10 +1,14 @@
 // libs/shared-utils/helpers/jwt.helper.ts
 
 import jwt from 'jsonwebtoken';
-import { UserType } from '../constants';
+
+export type UserType = 'VENDOR' | 'USER' | 'RIDER' | 'ADMIN';
 
 export interface JWTPayload {
-  userId: string;
+  vendorId?: string;
+  userId?: string;
+  riderId?: string;
+  adminId?: string;
   email: string;
   userType: UserType;
 }
@@ -17,16 +21,24 @@ export interface TokenPair {
 
 export class JWTHelper {
   private static readonly JWT_SECRET = process.env.JWT_SECRET || '';
+  private static readonly JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || '';
   private static readonly ACCESS_TOKEN_EXPIRY = process.env.JWT_EXPIRES_IN || '7d';
   private static readonly REFRESH_TOKEN_EXPIRY = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
+
+  /**
+   * Validate JWT secret is configured
+   */
+  private static validateSecret(): void {
+    if (!this.JWT_SECRET || this.JWT_SECRET.length < 32) {
+      throw new Error('JWT_SECRET must be configured and at least 32 characters');
+    }
+  }
 
   /**
    * Generate access token
    */
   static generateAccessToken(payload: JWTPayload): string {
-    if (!this.JWT_SECRET) {
-      throw new Error('JWT_SECRET is not configured');
-    }
+    this.validateSecret();
 
     return jwt.sign(payload, this.JWT_SECRET, {
       expiresIn: this.ACCESS_TOKEN_EXPIRY,
@@ -39,13 +51,11 @@ export class JWTHelper {
    * Generate refresh token
    */
   static generateRefreshToken(payload: JWTPayload): string {
-    if (!this.JWT_SECRET) {
-      throw new Error('JWT_SECRET is not configured');
-    }
+    this.validateSecret();
 
     return jwt.sign(
       { ...payload, type: 'refresh' },
-      this.JWT_SECRET,
+      this.JWT_REFRESH_SECRET,
       {
         expiresIn: this.REFRESH_TOKEN_EXPIRY,
         issuer: 'reeyo-platform',
@@ -63,7 +73,7 @@ export class JWTHelper {
 
     // Get expiry time in seconds
     const decoded = jwt.decode(accessToken) as any;
-    const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+    const expiresIn = decoded?.exp ? decoded.exp - Math.floor(Date.now() / 1000) : 0;
 
     return {
       accessToken,
@@ -76,9 +86,7 @@ export class JWTHelper {
    * Verify access token
    */
   static verifyAccessToken(token: string): JWTPayload {
-    if (!this.JWT_SECRET) {
-      throw new Error('JWT_SECRET is not configured');
-    }
+    this.validateSecret();
 
     try {
       const decoded = jwt.verify(token, this.JWT_SECRET, {
@@ -92,7 +100,10 @@ export class JWTHelper {
       }
 
       return {
+        vendorId: decoded.vendorId,
         userId: decoded.userId,
+        riderId: decoded.riderId,
+        adminId: decoded.adminId,
         email: decoded.email,
         userType: decoded.userType,
       };
@@ -111,12 +122,10 @@ export class JWTHelper {
    * Verify refresh token
    */
   static verifyRefreshToken(token: string): JWTPayload {
-    if (!this.JWT_SECRET) {
-      throw new Error('JWT_SECRET is not configured');
-    }
+    this.validateSecret();
 
     try {
-      const decoded = jwt.verify(token, this.JWT_SECRET, {
+      const decoded = jwt.verify(token, this.JWT_REFRESH_SECRET, {
         issuer: 'reeyo-platform',
         audience: 'reeyo-api',
       }) as JWTPayload & { type?: string };
@@ -127,7 +136,10 @@ export class JWTHelper {
       }
 
       return {
+        vendorId: decoded.vendorId,
         userId: decoded.userId,
+        riderId: decoded.riderId,
+        adminId: decoded.adminId,
         email: decoded.email,
         userType: decoded.userType,
       };
@@ -143,9 +155,45 @@ export class JWTHelper {
   }
 
   /**
-   * Decode token without verification (for debugging)
+   * Decode token without verification (for debugging only)
    */
   static decode(token: string): any {
     return jwt.decode(token);
   }
+
+  /**
+   * Get token expiry date
+   */
+  static getExpiryDate(token: string): Date | null {
+    const decoded = jwt.decode(token) as any;
+    if (!decoded?.exp) return null;
+    return new Date(decoded.exp * 1000);
+  }
+
+  /**
+   * Check if token is expired
+   */
+  static isExpired(token: string): boolean {
+    const expiryDate = this.getExpiryDate(token);
+    if (!expiryDate) return true;
+    return expiryDate < new Date();
+  }
 }
+
+// Export convenience functions for backward compatibility
+export function generateToken(payload: JWTPayload): string {
+  return JWTHelper.generateAccessToken(payload);
+}
+
+export function generateRefreshToken(payload: JWTPayload): string {
+  return JWTHelper.generateRefreshToken(payload);
+}
+
+export function verifyToken(token: string): JWTPayload {
+  return JWTHelper.verifyAccessToken(token);
+}
+
+export function generateTokenPair(payload: JWTPayload): TokenPair {
+  return JWTHelper.generateTokenPair(payload);
+}
+

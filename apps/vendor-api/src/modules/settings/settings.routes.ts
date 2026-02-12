@@ -5,13 +5,14 @@ import { validate } from '../../middleware/validation.middleware';
 import { authenticateVendor, requireActiveVendor } from '../../middleware/auth.middleware';
 import { SettingsController } from './settings.controller';
 
-const settingsRouter = Router();
+const router = Router();
 const settingsController = new SettingsController();
 
-settingsRouter.use(authenticateVendor);
-settingsRouter.use(requireActiveVendor);
+// All routes require authentication
+router.use(authenticateVendor);
+router.use(requireActiveVendor);
 
-settingsRouter.put(
+router.put(
   '/business-hours',
   validate([
     body('businessHours').isObject().withMessage('Business hours must be an object'),
@@ -19,7 +20,7 @@ settingsRouter.put(
   settingsController.updateBusinessHours
 );
 
-settingsRouter.patch(
+router.patch(
   '/online-status',
   validate([
     body('isOnline').isBoolean().withMessage('isOnline must be a boolean'),
@@ -27,6 +28,6 @@ settingsRouter.patch(
   settingsController.toggleOnlineStatus
 );
 
-settingsRouter.put('/bank-details', settingsController.updateBankDetails);
+router.put('/bank-details', settingsController.updateBankDetails);
 
-export { settingsRouter };
+export default router;  // ✅ Changed to default export
